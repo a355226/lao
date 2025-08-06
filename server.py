@@ -1,30 +1,47 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+import torch
+from transformers import VitsModel, AutoTokenizer
+import soundfile as sf
+import os
+import uuid
 
 app = Flask(__name__)
 
-@app.route('/', methods=['POST'])  # 直接部署在根路徑
+# 載入模型一次即可
+model = VitsModel.from_pretrained("facebook/mms-tts-lao")
+tokenizer = AutoTokenizer.from_pretrained("facebook/mms-tts-lao")
+
+@app.route("/tts", methods=["POST"])
 def tts():
     try:
-        # ✅ 從 JSON 讀取 text
         data = request.get_json()
-        text = data.get('text') if data else None
-        
+        text = data.get("text") if data else None
         if not text:
             return jsonify({"error": "Missing text"}), 400
-        
-        # TODO: 這裡放你的 TTS 生成程式碼
-        # 假設生成後存到 Render 靜態檔案，回傳 URL
-        audio_url = f"https://lao-l7vt.onrender.com/static/output_{text}.mp3"
-        
-        return jsonify({"url": audio_url})  # ✅ 一定要回傳 JSON
-    
+
+        inputs = tokenizer(text, return_tensors="pt")
+        with torch.no_grad():
+            audio = model(**inputs).waveform
+
+        filename = f"{uuid.uuid4().hex}.wav"
+        output_path = os.path.join("static", filename)
+        sf.write(output_path, audio.numpy()[0], model.config.sampling_rate)
+
+        full_url = request.host_url + "static/" + filename
+        return jsonify({ "url": full_url })
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({ "error": str(e) }), 500
 
+@app.route("/")
+def hello():
+    return "✅ Lao TTS API is running"
 
-@app.route('/', methods=['GET'])
-def health_check():
-    return "✅ TTS API is running"
+# 如果你要支援直接撥放音訊檔案
+@app.route('/static/<path:filename>')
+def serve_audio(filename):
+    return send_from_directory('static', filename)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    os.makedirs("static", exist_ok=True)
+    app.run(host="0.0.0.0", port=5000)
