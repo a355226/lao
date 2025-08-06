@@ -1,5 +1,5 @@
 import express from "express";
-import gradio from "@gradio/client";
+import { connect } from "@gradio/client";  // ✅ 正確匯入
 
 const app = express();
 app.use(express.json());
@@ -11,7 +11,7 @@ app.post("/tts", async (req, res) => {
       return res.status(400).json({ error: "Missing text" });
     }
 
-    const client = await gradio.connect("kenjichou/lao-tts-api");
+    const client = await connect("kenjichou/lao-tts-api");  // ✅ 改用 connect
     const result = await client.predict("/predict", { text });
 
     let audioUrl = "";
