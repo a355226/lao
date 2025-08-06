@@ -1,6 +1,6 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const gradio = require("@gradio/client");
+import express from "express";
+import fetch from "node-fetch";
+import bodyParser from "body-parser";
 
 const app = express();
 app.use(bodyParser.json());
@@ -12,17 +12,28 @@ app.post("/tts", async (req, res) => {
       return res.status(400).json({ error: "Missing text" });
     }
 
-    const client = await gradio.Client.connect("kenjichou/lao-tts-api");
-    const result = await client.predict("/predict", { text });
-
-    return res.json({
-      url: result.data[0].url || result.data[0]
+    const response = await fetch("https://kenjichou-lao-tts-api.hf.space/run/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: [text] }),
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+
+    const data = await response.json();
+    console.log("HF Response:", data);
+
+    if (!data?.data || !data.data[0]) {
+      return res.status(500).json({ error: "HF API 回傳錯誤", raw: data });
+    }
+
+    // 回傳完整檔案 URL
+    const audioUrl = `https://kenjichou-lao-tts-api.hf.space/file=${data.data[0].name}`;
+    res.json({ url: audioUrl });
+
+  } catch (err) {
+    console.error("Server error:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Proxy running on port ${PORT}`));
