@@ -1,2 +1,4 @@
 flask
-gradio_client
+torch
+transformers
+soundfile
