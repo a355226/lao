@@ -7,15 +7,25 @@ app.use(express.json());
 app.post("/tts", async (req, res) => {
   try {
     const text = req.body.text;
-    if (!text) return res.status(400).json({ error: "Missing text" });
+    if (!text) {
+      return res.status(400).json({ error: "Missing text" });
+    }
 
     const client = await gradio.connect("kenjichou/lao-tts-api");
     const result = await client.predict("/predict", { text });
-    const audioUrl = result.data[0].url || result.data[0];
+
+    let audioUrl = "";
+    if (Array.isArray(result.data) && result.data.length > 0) {
+      audioUrl = result.data[0].url || result.data[0];
+    }
+
+    if (!audioUrl) {
+      return res.status(500).json({ error: "No audio URL returned" });
+    }
 
     res.json({ url: audioUrl });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error:", err);
     res.status(500).json({ error: "Server error", detail: err.message });
   }
 });
