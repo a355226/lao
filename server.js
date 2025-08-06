@@ -1,27 +1,22 @@
 import express from "express";
-import cors from "cors";
-import { Client } from "@gradio/client";
+import gradio from "@gradio/client";
 
 const app = express();
-app.use(cors());
-app.use(express.json()); // ✅ 解析 JSON
+app.use(express.json());
 
 app.post("/tts", async (req, res) => {
   try {
-    const { text } = req.body;
-    if (!text) {
-      return res.status(400).json({ error: "Missing text" });
-    }
+    const text = req.body.text;
+    if (!text) return res.status(400).json({ error: "Missing text" });
 
-    // ✅ 符合 Hugging Face API 規範
-    const client = await Client.connect("kenjichou/lao-tts-api");
+    const client = await gradio.connect("kenjichou/lao-tts-api");
     const result = await client.predict("/predict", { text });
+    const audioUrl = result.data[0].url || result.data[0];
 
-    // result.data[0] 可能是 { url, name }
-    return res.json({ url: result.data[0].url || result.data[0].name });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: error.message });
+    res.json({ url: audioUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error", detail: err.message });
   }
 });
 
