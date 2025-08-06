@@ -1,6 +1,6 @@
-import express from "express";
-import bodyParser from "body-parser";
-import { Client } from "@gradio/client";
+const express = require("express");
+const bodyParser = require("body-parser");
+const gradio = require("@gradio/client");
 
 const app = express();
 app.use(bodyParser.json());
@@ -12,7 +12,7 @@ app.post("/tts", async (req, res) => {
       return res.status(400).json({ error: "Missing text" });
     }
 
-    const client = await Client.connect("kenjichou/lao-tts-api");
+    const client = await gradio.Client.connect("kenjichou/lao-tts-api");
     const result = await client.predict("/predict", { text });
 
     return res.json({
